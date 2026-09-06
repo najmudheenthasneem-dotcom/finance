@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personal Finance Dashboard</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'], },
+          colors: {
+            brand: { 50: '#f0fdf4', 100: '#dcfce7', 500: '#10b981', 600: '#059669', 700: '#047857', }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: rgba(241, 245, 249, 0.5); }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(203, 213, 225, 0.8); border-radius: 9999px; }
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
+
+  <header class="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- Logo -->
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white font-bold shadow-md shadow-emerald-500/20">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <span class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-700 bg-clip-text text-transparent">FinVue</span>
+            <span class="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">Wealth Suite</span>
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex items-center space-x-3">
+          <div class="flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 hidden sm:flex">
+            <label for="currency-select" class="text-xs font-medium text-slate-500 px-2">Currency</label>
+            <select id="currency-select" onchange="changeCurrency(this.value)" class="bg-white text-xs font-semibold text-slate-700 rounded-md py-1 px-2 border-0 shadow-sm focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer">
+              <option value="" selected>None</option>
+              <option value="₹">INR (₹)</option>
+              <option value="$">USD ($)</option>
+              <option value="€">EUR (€)</option>
+              <option value="£">GBP (£)</option>
+            </select>
+          </div>
+          <button onclick="openModal()" class="flex items-center space-x-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-xl shadow-sm hover:shadow transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+            <span class="hidden sm:inline">Add Entry</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-grow">
+
+    <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-200 mb-6">
+      
+      <!-- Tabs -->
+      <div class="flex space-x-1 sm:space-x-2 bg-slate-200/70 p-1.5 rounded-2xl w-full lg:w-auto overflow-x-auto custom-scrollbar">
+        <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn active-tab px-4 py-2 text-sm font-semibold rounded-xl bg-white text-emerald-700 shadow-sm transition">Overview</button>
+        <button onclick="switchTab('assets')" id="tab-assets" class="tab-btn px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 transition">Assets</button>
+        <button onclick="switchTab('liabilities')" id="tab-liabilities" class="tab-btn px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 transition">Liabilities</button>
+        <button onclick="switchTab('income')" id="tab-income" class="tab-btn px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 transition">Income</button>
+        <button onclick="switchTab('expenses')" id="tab-expenses" class="tab-btn px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 transition">Expenses</button>
+        <button onclick="switchTab('analytics')" id="tab-analytics" class="tab-btn px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 transition whitespace-nowrap">Health & Insights</button>
+      </div>
+
+      <!-- Action Buttons (CSV Import/Export/Reset) -->
+      <div class="flex items-center space-x-2 w-full lg:w-auto justify-end">
+        <button onclick="triggerCSVImport()" class="text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-xl transition shadow-sm flex items-center">
+          <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+          Import CSV
+        </button>
+        <button onclick="exportToCSV()" class="text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 px-4 py-2 rounded-xl transition shadow-sm flex items-center">
+          <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+          Export CSV
+        </button>
+        <button onclick="resetToSampleData()" class="text-xs font-medium text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-xl transition border border-slate-200">
+          Reset Data
+        </button>
+        <input type="file" id="csvFileInput" accept=".csv" class="hidden" onchange="handleCSVImport(event)">
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      
+      <!-- Net Worth Card -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm relative overflow-hidden group hover:shadow-md transition">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Net Worth</span>
+          <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+          </div>
+        </div>
+        <p id="kpi-net-worth" class="text-2xl font-bold text-slate-900 mt-2">0</p>
+        <div class="mt-2 flex items-center text-xs text-slate-500 space-x-1">
+          <span>Assets minus Liabilities</span>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-indigo-600"></div>
+      </div>
+
+      <!-- Assets Card -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm relative overflow-hidden group hover:shadow-md transition">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Assets</span>
+          <div class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          </div>
+        </div>
+        <p id="kpi-total-assets" class="text-2xl font-bold text-emerald-600 mt-2">0</p>
+        <div class="mt-2 flex items-center text-xs text-slate-500">
+          <span id="kpi-asset-count">0 items registered</span>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-emerald-600"></div>
+      </div>
+
+      <!-- Liabilities Card -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm relative overflow-hidden group hover:shadow-md transition">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Liabilities</span>
+          <div class="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+          </div>
+        </div>
+        <p id="kpi-total-liabilities" class="text-2xl font-bold text-rose-600 mt-2">0</p>
+        <div class="mt-2 flex items-center text-xs text-slate-500">
+          <span id="kpi-debt-ratio">Debt ratio: 0%</span>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 to-rose-600"></div>
+      </div>
+
+      <!-- Monthly Cashflow Card -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm relative overflow-hidden group hover:shadow-md transition">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Monthly Net Cashflow</span>
+          <div class="w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center text-sky-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          </div>
+        </div>
+        <p id="kpi-monthly-cashflow" class="text-2xl font-bold text-slate-900 mt-2">0</p>
+        <div class="mt-2 flex items-center text-xs text-slate-500 justify-between">
+          <span id="kpi-savings-rate">Savings rate: 0%</span>
+          <span class="text-xs text-emerald-600 font-medium" id="kpi-cashflow-tag">Positive</span>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-sky-500 to-sky-600"></div>
+      </div>
+    </div>
+
+    <section id="view-dashboard" class="tab-content space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm lg:col-span-2">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-base font-bold text-slate-800">Monthly Cash Flow Comparison</h2>
+              <p class="text-xs text-slate-500">Monthly recurring income vs monthly regular expenses</p>
+            </div>
+          </div>
+          <div class="h-64 relative"><canvas id="cashflowBarChart"></canvas></div>
+        </div>
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <h2 class="text-base font-bold text-slate-800">Balance Sheet Split</h2>
+            <p class="text-xs text-slate-500">Total assets vs total debt obligations</p>
+          </div>
+          <div class="h-56 relative my-auto"><canvas id="balanceSheetChart"></canvas></div>
+          <div class="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 text-center text-xs">
+            <div><span class="text-slate-400 block font-medium">Assets</span><span id="overview-asset-sum" class="font-bold text-emerald-600">0</span></div>
+            <div><span class="text-slate-400 block font-medium">Liabilities</span><span id="overview-debt-sum" class="font-bold text-rose-600">0</span></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Summary Matrix -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:border-emerald-300 transition">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="font-bold text-sm text-slate-800 flex items-center"><span class="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span> Top Assets</h3>
+            <button onclick="switchTab('assets')" class="text-xs text-emerald-600 font-semibold">View All</button>
+          </div>
+          <div id="overview-assets-list" class="space-y-2 text-xs"></div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:border-rose-300 transition">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="font-bold text-sm text-slate-800 flex items-center"><span class="w-2 h-2 rounded-full bg-rose-500 mr-2"></span> Top Liabilities</h3>
+            <button onclick="switchTab('liabilities')" class="text-xs text-rose-600 font-semibold">View All</button>
+          </div>
+          <div id="overview-liabilities-list" class="space-y-2 text-xs"></div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:border-sky-300 transition">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="font-bold text-sm text-slate-800 flex items-center"><span class="w-2 h-2 rounded-full bg-sky-500 mr-2"></span> Income Streams</h3>
+            <button onclick="switchTab('income')" class="text-xs text-sky-600 font-semibold">View All</button>
+          </div>
+          <div id="overview-income-list" class="space-y-2 text-xs"></div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:border-amber-300 transition">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="font-bold text-sm text-slate-800 flex items-center"><span class="w-2 h-2 rounded-full bg-amber-500 mr-2"></span> Monthly Expenses</h3>
+            <button onclick="switchTab('expenses')" class="text-xs text-amber-600 font-semibold">View All</button>
+          </div>
+          <div id="overview-expenses-list" class="space-y-2 text-xs"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- View: Assets -->
+    <section id="view-assets" class="tab-content hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <h3 class="text-sm font-bold text-slate-800 mb-2">Asset Allocation</h3>
+          <div class="h-64 relative"><canvas id="assetCategoryChart"></canvas></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm lg:col-span-2 overflow-hidden flex flex-col justify-between">
+          <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-slate-200 bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <th class="py-3 px-4">Asset Name</th><th class="py-3 px-4">Category</th><th class="py-3 px-4">Notes</th><th class="py-3 px-4 text-right">Value</th><th class="py-3 px-4 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="assets-table-body" class="divide-y divide-slate-100 text-sm"></tbody>
+            </table>
+          </div>
+          <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center text-xs text-slate-600 font-semibold">
+            <span>Total Valuation:</span><span id="assets-footer-total" class="text-emerald-700 text-sm font-bold">0</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- View: Liabilities -->
+    <section id="view-liabilities" class="tab-content hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <h3 class="text-sm font-bold text-slate-800 mb-2">Debt Distribution</h3>
+          <div class="h-64 relative"><canvas id="liabilityCategoryChart"></canvas></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm lg:col-span-2 overflow-hidden flex flex-col justify-between">
+          <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-slate-200 bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <th class="py-3 px-4">Liability</th><th class="py-3 px-4">Category</th><th class="py-3 px-4">Notes</th><th class="py-3 px-4 text-right">Balance Owed</th><th class="py-3 px-4 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="liabilities-table-body" class="divide-y divide-slate-100 text-sm"></tbody>
+            </table>
+          </div>
+          <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center text-xs text-slate-600 font-semibold">
+            <span>Total Debt:</span><span id="liabilities-footer-total" class="text-rose-600 text-sm font-bold">0</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- View: Income -->
+    <section id="view-income" class="tab-content hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <h3 class="text-sm font-bold text-slate-800 mb-2">Income Sources</h3>
+          <div class="h-64 relative"><canvas id="incomeCategoryChart"></canvas></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm lg:col-span-2 overflow-hidden flex flex-col justify-between">
+          <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-slate-200 bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <th class="py-3 px-4">Source Name</th><th class="py-3 px-4">Category</th><th class="py-3 px-4">Frequency</th><th class="py-3 px-4 text-right">Monthly Amount</th><th class="py-3 px-4 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="income-table-body" class="divide-y divide-slate-100 text-sm"></tbody>
+            </table>
+          </div>
+          <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center text-xs text-slate-600 font-semibold">
+            <span>Total Monthly Inflow:</span><span id="income-footer-total" class="text-sky-600 text-sm font-bold">0 / mo</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- View: Expenses -->
+    <section id="view-expenses" class="tab-content hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <h3 class="text-sm font-bold text-slate-800 mb-2">Expense Allocation</h3>
+          <div class="h-64 relative"><canvas id="expenseCategoryChart"></canvas></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm lg:col-span-2 overflow-hidden flex flex-col justify-between">
+          <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-slate-200 bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <th class="py-3 px-4">Expense Name</th><th class="py-3 px-4">Category</th><th class="py-3 px-4">Details</th><th class="py-3 px-4 text-right">Monthly Cost</th><th class="py-3 px-4 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="expenses-table-body" class="divide-y divide-slate-100 text-sm"></tbody>
+            </table>
+          </div>
+          <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center text-xs text-slate-600 font-semibold">
+            <span>Total Monthly Outflow:</span><span id="expenses-footer-total" class="text-amber-600 text-sm font-bold">0 / mo</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- View: Analytics -->
+    <section id="view-analytics" class="tab-content hidden space-y-6">
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <h2 class="text-lg font-bold text-slate-800 mb-1">Financial Health & Diagnostic Ratios</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 mt-4">
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <span class="text-xs text-slate-500 block font-medium">Emergency Runway</span>
+            <p id="health-emergency-runway" class="text-xl font-bold text-slate-800 mt-1">0 Months</p>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <span class="text-xs text-slate-500 block font-medium">Savings Rate</span>
+            <p id="health-savings-rate" class="text-xl font-bold text-emerald-600 mt-1">0%</p>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <span class="text-xs text-slate-500 block font-medium">Debt-to-Asset Ratio</span>
+            <p id="health-debt-asset-ratio" class="text-xl font-bold text-slate-800 mt-1">0%</p>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <span class="text-xs text-slate-500 block font-medium">Annual Free Cash Flow</span>
+            <p id="health-annual-fcf" class="text-xl font-bold text-indigo-600 mt-1">0</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="entry-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 transform transition-all">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+        <h3 id="modal-title" class="text-lg font-bold text-slate-800">Add Financial Record</h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 rounded-lg p-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <form id="entry-form" onsubmit="handleFormSubmit(event)" class="space-y-4 mt-4">
+        <input type="hidden" id="entry-id" value="">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Pillar Type</label>
+          <select id="entry-type" onchange="updateCategoryOptions()" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+            <option value="asset">Asset (Positive Value)</option>
+            <option value="liability">Liability (Debt)</option>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Name</label>
+          <input type="text" id="entry-name" required class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Amount</label>
+            <input type="number" step="any" min="0" id="entry-amount" required class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Category</label>
+            <select id="entry-category" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"></select>
+          </div>
+        </div>
+        <div>
+          <label id="secondary-field-label" class="block text-xs font-semibold text-slate-600 mb-1">Notes / Details</label>
+          <input type="text" id="entry-detail" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+        </div>
+        <div class="flex items-center justify-end space-x-3 pt-3 border-t border-slate-100">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">Cancel</button>
+          <button type="submit" class="px-5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none flex items-center bg-slate-900 text-white text-xs font-medium px-4 py-3 rounded-xl shadow-xl space-x-2">
+    <span id="toast-icon" class="text-emerald-400">✓</span>
+    <span id="toast-message">വിജയകരമായി പൂർത്തിയാക്കി</span>
+  </div>
+
+  <script>
+    const DEFAULT_DATA = {
+      currency: '', 
+      assets: [
+        { id: 'a1', name: 'Checking Account', category: 'Cash', amount: 250, detail: '' },
+        { id: 'a3', name: 'Crypto', category: 'DT', amount: 29, detail: '' },
+        { id: 'a5', name: 'Mutual funds', category: 'Term insurance', amount: 1555, detail: '' },
+        { id: 'a6', name: 'Emi', category: 'Jewelry', amount: 400, detail: '' }
+      ],
+      liabilities: [
+        { id: 'l1', name: 'Personal debt', category: 'Aliyan', amount: 666, detail: '' },
+        { id: 'l2', name: 'bank Loan', category: 'Bank Loan', amount: 3700, detail: '' },
+        { id: 'l3', name: 'Tabby', category: 'Credit Card', amount: 2420, detail: '' },
+        { id: 'l4', name: 'Personal debt', category: 'Shiyas', amount: 2000, detail: '' },
+        { id: 'l5', name: 'Personal debt', category: 'Althaf', amount: 870, detail: '' }
+      ],
+      income: [
+        { id: 'i1', name: 'Primary Job', category: 'Salary', amount: 222, detail: 'Monthly' },
+        { id: 'i2', name: 'Usdt', category: 'DT', amount: 481, detail: 'Monthly' }
+      ],
+      expenses: []
+    };
+
+    let financeData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    let chartInstances = {};
+
+    const CATEGORIES = {
+      asset: ['Cash', 'Bank', 'DT', 'Vehicles', 'Term insurance', 'Jewelry', 'Investments', 'Real Estate', 'Other'],
+      liability: ['Aliyan', 'Bank Loan', 'Credit Card', 'Shiyas', 'Althaf', 'Personal Loan', 'Mortgage', 'Other'],
+      income: ['Salary', 'DT', 'Binance', 'Dividends', 'Other'],
+      expense: ['Housing', 'Food & Groceries', 'Utilities', 'Transportation', 'Lifestyle', 'Healthcare', 'Other']
+    };
+
+    document.addEventListener("DOMContentLoaded", () => {
+      renderAll();
+    });
+
+    function formatMoney(value) {
+      const num = Number(value) || 0;
+      const formatted = num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+      return financeData.currency ? `${financeData.currency} ${formatted}` : formatted;
+    }
+
+    function showToast(message, isError = false) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-message').textContent = message;
+      document.getElementById('toast-icon').textContent = isError ? '⚠' : '✓';
+      document.getElementById('toast-icon').className = isError ? 'text-rose-400 font-bold' : 'text-emerald-400 font-bold';
+      
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    }
+
+    function changeCurrency(newCurrency) {
+      financeData.currency = newCurrency;
+      renderAll();
+      showToast('കറൻസി മാറ്റി (Currency changed)');
+    }
+
+    function switchTab(tabName) {
+      const tabs = ['dashboard', 'assets', 'liabilities', 'income', 'expenses', 'analytics'];
+      tabs.forEach(t => {
+        const view = document.getElementById(`view-${t}`);
+        const btn = document.getElementById(`tab-${t}`);
+        if (t === tabName) {
+          view.classList.remove('hidden');
+          btn.classList.add('bg-white', 'text-emerald-700', 'shadow-sm');
+          btn.classList.remove('text-slate-600');
+        } else {
+          view.classList.add('hidden');
+          btn.classList.remove('bg-white', 'text-emerald-700', 'shadow-sm');
+          btn.classList.add('text-slate-600');
+        }
+      });
+      setTimeout(updateAllCharts, 50);
+    }
+
+    function resetToSampleData() {
+      financeData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+      renderAll();
+      showToast('ഡാറ്റ പുനഃക്രമീകരിച്ചു (Data Reset Successful)');
+    }
+
+    function triggerCSVImport() {
+      document.getElementById('csvFileInput').click();
+    }
+
+    function exportToCSV() {
+      try {
+        const rows = [["Type", "ID", "Name", "Category", "Amount", "Detail"]];
+        
+        const addRows = (typeStr, arr) => {
+          arr.forEach(item => {
+            rows.push([
+              typeStr,
+              item.id,
+              `"${(item.name || '').toString().replace(/"/g, '""')}"`,
+              `"${(item.category || '').toString().replace(/"/g, '""')}"`,
+              item.amount,
+              `"${(item.detail || '').toString().replace(/"/g, '""')}"`
+            ]);
+          });
+        };
+
+        addRows('Asset', financeData.assets);
+        addRows('Liability', financeData.liabilities);
+        addRows('Income', financeData.income);
+        addRows('Expense', financeData.expenses);
+
+        const csvString = rows.map(r => r.join(',')).join('\n');
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", "Finance_Dashboard_Export.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showToast('CSV വിജയകരമായി എക്സ്പോർട്ട് ചെയ്തു (Exported Successfully)');
+      } catch (e) {
+        showToast('എക്സ്പോർട്ട് ചെയ്യുന്നതിൽ പിഴവ് (Export Error)', true);
+      }
+    }
+
+    function handleCSVImport(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const text = e.target.result;
+          const lines = text.split('\n').filter(line => line.trim() !== '');
+          
+          if (lines.length < 2) throw new Error("File empty or missing headers");
+
+          const newAssets = [];
+          const newLiabs = [];
+          const newIncome = [];
+          const newExp = [];
+
+          // Parse CSV lines handling quotes
+          for (let i = 1; i < lines.length; i++) {
+            let cols = [];
+            let curr = '';
+            let insideQuotes = false;
+            
+            for(let char of lines[i]) {
+                if(char === '"') insideQuotes = !insideQuotes;
+                else if(char === ',' && !insideQuotes) { cols.push(curr); curr = ''; }
+                else curr += char;
+            }
+            cols.push(curr);
+
+            if (cols.length >= 5) {
+              const type = cols[0].trim();
+              const item = {
+                id: cols[1].trim() || `imp-${Date.now()}-${i}`,
+                name: cols[2].replace(/^"|"$/g, '').trim() || 'Unnamed', 
+                category: cols[3].replace(/^"|"$/g, '').trim() || 'Other',
+                amount: parseFloat(cols[4]) || 0,
+                detail: cols[5] ? cols[5].replace(/^"|"$/g, '').trim() : ''
+              };
+              
+              if (type === 'Asset') newAssets.push(item);
+              else if (type === 'Liability') newLiabs.push(item);
+              else if (type === 'Income') newIncome.push(item);
+              else if (type === 'Expense') newExp.push(item);
+            }
+          }
+          
+          financeData.assets = newAssets;
+          financeData.liabilities = newLiabs;
+          financeData.income = newIncome;
+          financeData.expenses = newExp;
+          
+          document.getElementById('csvFileInput').value = "";
+          renderAll();
+          showToast('CSV ഡാറ്റ വിജയകരമായി ചേർത്തു (Imported Successfully)');
+        } catch (err) {
+          showToast('അസാധുവായ CSV ഫയൽ (Invalid CSV File)', true);
+          document.getElementById('csvFileInput').value = "";
+        }
+      };
+      
+      reader.onerror = function() {
+        showToast('ഫയൽ വായിക്കാൻ കഴിഞ്ഞില്ല (Error reading file)', true);
+      };
+      
+      reader.readAsText(file);
+    }
+
+    function openModal(prefillType = 'asset', entryId = null) {
+      document.getElementById('entry-modal').classList.remove('hidden');
+      document.getElementById('entry-form').reset();
+      document.getElementById('entry-id').value = '';
+      
+      const typeSelect = document.getElementById('entry-type');
+      typeSelect.value = prefillType;
+      updateCategoryOptions();
+      
+      if (entryId) {
+        const typeMap = { 'asset': financeData.assets, 'liability': financeData.liabilities, 'income': financeData.income, 'expense': financeData.expenses };
+        const item = typeMap[prefillType].find(i => i.id === entryId);
+        if (item) {
+          document.getElementById('entry-id').value = item.id;
+          document.getElementById('entry-name').value = item.name;
+          document.getElementById('entry-amount').value = item.amount;
+          document.getElementById('entry-category').value = item.category;
+          document.getElementById('entry-detail').value = item.detail;
+          document.getElementById('modal-title').textContent = 'Edit Record';
+        }
+      } else {
+        document.getElementById('modal-title').textContent = 'Add Financial Record';
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('entry-modal').classList.add('hidden');
+    }
+
+    function updateCategoryOptions() {
+      const type = document.getElementById('entry-type').value;
+      const catSelect = document.getElementById('entry-category');
+      catSelect.innerHTML = CATEGORIES[type].map(cat => `<option value="${cat}">${cat}</option>`).join('');
+    }
+
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      const typeKey = document.getElementById('entry-type').value;
+      const typeMap = { 'asset': 'assets', 'liability': 'liabilities', 'income': 'income', 'expense': 'expenses' };
+      const colName = typeMap[typeKey];
+      const id = document.getElementById('entry-id').value || `${typeKey.charAt(0)}${Date.now()}`;
+      
+      const record = {
+        id: id,
+        name: document.getElementById('entry-name').value,
+        amount: parseFloat(document.getElementById('entry-amount').value),
+        category: document.getElementById('entry-category').value,
+        detail: document.getElementById('entry-detail').value
+      };
+
+      // Remove from everywhere just in case type changed
+      ['assets', 'liabilities', 'income', 'expenses'].forEach(col => {
+        financeData[col] = financeData[col].filter(i => i.id !== id);
+      });
+      
+      financeData[colName].push(record);
+      
+      closeModal();
+      renderAll();
+      showToast('വിവരങ്ങൾ സേവ് ചെയ്തു (Saved Successfully)');
+    }
+
+    function deleteEntry(typeKey, id) {
+      const typeMap = { 'asset': 'assets', 'liability': 'liabilities', 'income': 'income', 'expense': 'expenses' };
+      financeData[typeMap[typeKey]] = financeData[typeMap[typeKey]].filter(i => i.id !== id);
+      renderAll();
+      showToast('ഡിലീറ്റ് ചെയ്തു (Deleted)');
+    }
+
+    function editEntry(typeKey, id) { 
+      openModal(typeKey, id); 
+    }
+
+    function calculateTotals() {
+      const tA = financeData.assets.reduce((s, i) => s + Number(i.amount), 0);
+      const tL = financeData.liabilities.reduce((s, i) => s + Number(i.amount), 0);
+      const mI = financeData.income.reduce((s, i) => s + Number(i.amount), 0);
+      const mE = financeData.expenses.reduce((s, i) => s + Number(i.amount), 0);
+      
+      const liqCategories = ['Cash', 'Bank', 'DT'];
+      const liq = financeData.assets.filter(a => liqCategories.includes(a.category)).reduce((s, i) => s + Number(i.amount), 0);
+      
+      return {
+        totalAssets: tA, 
+        totalLiabilities: tL, 
+        netWorth: tA - tL,
+        monthlyIncome: mI, 
+        monthlyExpenses: mE, 
+        monthlyCashflow: mI - mE,
+        savingsRate: mI > 0 ? ((mI - mE) / mI) * 100 : 0,
+        debtToAsset: tA > 0 ? (tL / tA) * 100 : 0,
+        runwayMonths: mE > 0 ? (liq / mE).toFixed(1) : (liq > 0 ? '∞' : '0')
+      };
+    }
+
+    function renderAll() {
+      const stats = calculateTotals();
+      
+      document.getElementById('kpi-net-worth').textContent = formatMoney(stats.netWorth);
+      document.getElementById('kpi-total-assets').textContent = formatMoney(stats.totalAssets);
+      document.getElementById('kpi-asset-count').textContent = `${financeData.assets.length} items`;
+      document.getElementById('kpi-total-liabilities').textContent = formatMoney(stats.totalLiabilities);
+      document.getElementById('kpi-debt-ratio').textContent = `Debt Ratio: ${stats.debtToAsset.toFixed(1)}%`;
+      document.getElementById('kpi-monthly-cashflow').textContent = formatMoney(stats.monthlyCashflow);
+      document.getElementById('kpi-savings-rate').textContent = `Savings Rate: ${stats.savingsRate.toFixed(1)}%`;
+      
+      document.getElementById('overview-asset-sum').textContent = formatMoney(stats.totalAssets);
+      document.getElementById('overview-debt-sum').textContent = formatMoney(stats.totalLiabilities);
+
+      document.getElementById('assets-footer-total').textContent = formatMoney(stats.totalAssets);
+      document.getElementById('liabilities-footer-total').textContent = formatMoney(stats.totalLiabilities);
+      document.getElementById('income-footer-total').textContent = formatMoney(stats.monthlyIncome);
+      document.getElementById('expenses-footer-total').textContent = formatMoney(stats.monthlyExpenses);
+
+      document.getElementById('health-emergency-runway').textContent = `${stats.runwayMonths} Months`;
+      document.getElementById('health-savings-rate').textContent = `${stats.savingsRate.toFixed(1)}%`;
+      document.getElementById('health-debt-asset-ratio').textContent = `${stats.debtToAsset.toFixed(1)}%`;
+      document.getElementById('health-annual-fcf').textContent = formatMoney(stats.monthlyCashflow * 12);
+
+      const buildRows = (dataArr, typeKey, colorClass) => {
+        if(!dataArr.length) return `<tr><td colspan="5" class="text-center py-6 text-slate-400 text-xs">No records found</td></tr>`;
+        return dataArr.map(item => `
+          <tr class="hover:bg-slate-50 border-b border-slate-50">
+            <td class="py-3 px-4 font-semibold">${item.name}</td>
+            <td class="py-3 px-4 text-xs"><span class="bg-slate-100 rounded px-2 py-1">${item.category}</span></td>
+            <td class="py-3 px-4 text-slate-500 text-xs">${item.detail || '-'}</td>
+            <td class="py-3 px-4 text-right font-bold ${colorClass}">${formatMoney(item.amount)}</td>
+            <td class="py-3 px-4 text-center">
+              <button onclick="editEntry('${typeKey}', '${item.id}')" class="text-indigo-500 hover:text-indigo-700 mx-1">Edit</button>
+              <button onclick="deleteEntry('${typeKey}', '${item.id}')" class="text-rose-500 hover:text-rose-700 mx-1">Del</button>
+            </td>
+          </tr>
+        `).join('');
+      };
+
+      document.getElementById('assets-table-body').innerHTML = buildRows(financeData.assets, 'asset', 'text-slate-900');
+      document.getElementById('liabilities-table-body').innerHTML = buildRows(financeData.liabilities, 'liability', 'text-rose-600');
+      document.getElementById('income-table-body').innerHTML = buildRows(financeData.income, 'income', 'text-sky-700');
+      document.getElementById('expenses-table-body').innerHTML = buildRows(financeData.expenses, 'expense', 'text-amber-700');
+
+      const buildMiniList = (dataArr) => {
+        if(!dataArr.length) return `<p class="text-slate-400 text-xs py-2">Empty</p>`;
+        return dataArr.slice(0, 4).map(item => `
+          <div class="flex justify-between py-1 border-b border-slate-50 last:border-0">
+            <span class="truncate pr-2">${item.name}</span>
+            <span class="font-semibold">${formatMoney(item.amount)}</span>
+          </div>
+        `).join('');
+      };
+      
+      document.getElementById('overview-assets-list').innerHTML = buildMiniList(financeData.assets);
+      document.getElementById('overview-liabilities-list').innerHTML = buildMiniList(financeData.liabilities);
+      document.getElementById('overview-income-list').innerHTML = buildMiniList(financeData.income);
+      document.getElementById('overview-expenses-list').innerHTML = buildMiniList(financeData.expenses);
+      
+      updateAllCharts();
+    }
+
+    function updateAllCharts() {
+      const stats = calculateTotals();
+      
+      const ctxCashflow = document.getElementById('cashflowBarChart');
+      if (ctxCashflow) {
+        if (chartInstances.cashflow) chartInstances.cashflow.destroy();
+        chartInstances.cashflow = new Chart(ctxCashflow, {
+          type: 'bar',
+          data: { 
+            labels: ['Monthly Flow'], 
+            datasets: [
+              { label: 'Income', data: [stats.monthlyIncome], backgroundColor: '#10b981', borderRadius: 4 }, 
+              { label: 'Expenses', data: [stats.monthlyExpenses], backgroundColor: '#f43f5e', borderRadius: 4 }
+            ] 
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+      }
+
+      const ctxBal = document.getElementById('balanceSheetChart');
+      if (ctxBal) {
+        if (chartInstances.balance) chartInstances.balance.destroy();
+        chartInstances.balance = new Chart(ctxBal, {
+          type: 'doughnut',
+          data: { 
+            labels: ['Assets', 'Liabilities'], 
+            datasets: [{ data: [stats.totalAssets, stats.totalLiabilities], backgroundColor: ['#10b981', '#f43f5e'], borderWidth: 0 }] 
+          },
+          options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false } } }
+        });
+      }
+
+      const buildDoughnut = (id, items, key, colors) => {
+        const c = document.getElementById(id);
+        if(!c) return;
+        if(chartInstances[key]) chartInstances[key].destroy();
+        
+        const map = {}; 
+        items.forEach(i => { map[i.category] = (map[i.category] || 0) + Number(i.amount); });
+        
+        const labels = Object.keys(map).length ? Object.keys(map) : ['No Data'];
+        const data = Object.values(map).length ? Object.values(map) : [1];
+        
+        chartInstances[key] = new Chart(c, {
+          type: 'doughnut',
+          data: { 
+            labels: labels, 
+            datasets: [{ data: data, backgroundColor: labels[0]==='No Data' ? ['#f1f5f9'] : colors, borderWidth: 0 }] 
+          },
+          options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } } } }
+        });
+      };
+
+      buildDoughnut('assetCategoryChart', financeData.assets, 'ast', ['#10b981','#0ea5e9','#8b5cf6','#f59e0b','#ec4899','#64748b']);
+      buildDoughnut('liabilityCategoryChart', financeData.liabilities, 'lbl', ['#f43f5e','#fb923c','#eab308','#d946ef','#64748b']);
+      buildDoughnut('incomeCategoryChart', financeData.income, 'inc', ['#0ea5e9','#10b981','#8b5cf6','#f59e0b']);
+      buildDoughnut('expenseCategoryChart', financeData.expenses, 'exp', ['#f59e0b','#ef4444','#8b5cf6','#06b6d4']);
+    }
+  </script>
+</body>
+</html>
